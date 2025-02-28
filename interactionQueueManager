@@ -1,0 +1,56 @@
+// InteractionQueueManager.cs
+using UnityEngine;
+using System.Collections.Generic;
+using System.Collections;
+
+public class InteractionQueueManager : MonoBehaviour
+{
+    public static InteractionQueueManager Instance { get; private set; }
+
+    private Queue<TapAnimationController2> _interactionQueue = new Queue<TapAnimationController2>();
+    private bool _isProcessing = false;
+
+    // Global property to check if any interaction is active
+    public bool IsInteractionActive
+    {
+        get { return _isProcessing || _interactionQueue.Count > 0; }
+    }
+
+    void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+    }
+
+    public void EnqueueInteraction(TapAnimationController2 controller)
+    {
+        // Only enqueue if no interaction is active
+        if (IsInteractionActive)
+            return;
+            
+        _interactionQueue.Enqueue(controller);
+        controller.SetInteractionState(false);
+
+        if (!_isProcessing)
+            StartCoroutine(ProcessQueue());
+    }
+
+    private IEnumerator ProcessQueue()
+    {
+        _isProcessing = true;
+
+        while (_interactionQueue.Count > 0)
+        {
+            var current = _interactionQueue.Dequeue();
+            current.SetInteractionState(true);
+            yield return current.ExecuteInteractionSequence();
+            current.SetInteractionState(false);
+        }
+
+        _isProcessing = false;
+    }
+}
